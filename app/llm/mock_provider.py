@@ -1,7 +1,8 @@
 """Deterministic Mock LLM Provider for offline testing and reproducible failure demonstrations."""
 import json
 import logging
-from typing import Optional, List, Dict, Any, Callable
+import re
+from typing import Optional, List, Callable
 from app.llm.base import LLMProvider
 
 logger = logging.getLogger("evidenceguard.llm.mock")
@@ -14,7 +15,7 @@ class MockLLMProvider(LLMProvider):
     without requiring an active network connection or external API credentials.
     """
 
-    def __init__(self, model_name: str = "mock-gpt-4o-mini"):
+    def __init__(self, model_name: str = "deterministic-mock"):
         self.model_name = model_name
         self._queued_responses: List[str] = []
         self._force_failure_scenario: Optional[str] = None
@@ -58,7 +59,6 @@ class MockLLMProvider(LLMProvider):
         is_drafter = not (is_checker or is_corrector) and ("[role: drafter]" in lower_sys or "drafter" in lower_sys or "draft" in lower_sys)
 
         # Extract the question portion from user prompt to prevent accidental matches on evidence text
-        import re
         q_match = re.search(r"(?:user question|question):\s*(.+?)(?:\n|$)", user_prompt, re.IGNORECASE)
         q_text = q_match.group(1).strip().lower() if q_match else user_prompt.lower()
         lower_user = user_prompt.lower()
@@ -76,18 +76,18 @@ class MockLLMProvider(LLMProvider):
             if is_checker:
                 return json.dumps({
                     "passed": False,
-                    "failure_type": "unsupported_fact",
+                    "failure_type": "evidence_grounding_failure",
                     "claims": [
                         {
-                            "claim": "NovaTech generated $15M in ARR in 2024",
+                            "text": "NovaTech generated $15M in ARR in 2024",
                             "status": "unsupported",
-                            "evidence_ids": [],
+                            "source_ids": [],
                             "reason": "No evidence provides annual recurring revenue data for NovaTech."
                         },
                         {
-                            "claim": "NovaTech has a $95M valuation",
+                            "text": "NovaTech has a $95M valuation",
                             "status": "unsupported",
-                            "evidence_ids": [],
+                            "source_ids": [],
                             "reason": "No evidence contains valuation figures for NovaTech."
                         }
                     ]
@@ -118,24 +118,24 @@ class MockLLMProvider(LLMProvider):
                 if "2018" in lower_user:
                     return json.dumps({
                         "passed": False,
-                        "failure_type": "contradicted_fact",
+                        "failure_type": "evidence_grounding_failure",
                         "claims": [
                             {
-                                "claim": "NovaTech was founded in October 2018",
+                                "text": "NovaTech was founded in October 2018",
                                 "status": "contradicted",
-                                "evidence_ids": ["novatech-001"],
-                                "reason": "Evidence explicitly states NovaTech was founded in October 2019, contradicting the draft's claim of 2018."
+                                "source_ids": ["novatech-001"],
+                                "reason": "The supplied evidence states October 2019."
                             },
                             {
-                                "claim": "NovaTech was founded by Dr. Priya Shah and Marcus Vance",
+                                "text": "NovaTech was founded by Dr. Priya Shah and Marcus Vance",
                                 "status": "supported",
-                                "evidence_ids": ["novatech-001"],
+                                "source_ids": ["novatech-001"],
                                 "reason": "Corroborated by source novatech-001."
                             },
                             {
-                                "claim": "NovaTech is headquartered in Seattle, Washington",
+                                "text": "NovaTech is headquartered in Seattle, Washington",
                                 "status": "supported",
-                                "evidence_ids": ["novatech-001"],
+                                "source_ids": ["novatech-001"],
                                 "reason": "Corroborated by source novatech-001."
                             }
                         ]
@@ -145,15 +145,15 @@ class MockLLMProvider(LLMProvider):
                     "failure_type": None,
                     "claims": [
                         {
-                            "claim": "NovaTech was founded in October 2019 by Dr. Priya Shah and Marcus Vance",
+                            "text": "NovaTech was founded in October 2019 by Dr. Priya Shah and Marcus Vance",
                             "status": "supported",
-                            "evidence_ids": ["novatech-001"],
+                            "source_ids": ["novatech-001"],
                             "reason": "Directly stated in novatech-001."
                         },
                         {
-                            "claim": "The company is headquartered in Seattle, Washington",
+                            "text": "The company is headquartered in Seattle, Washington",
                             "status": "supported",
-                            "evidence_ids": ["novatech-001"],
+                            "source_ids": ["novatech-001"],
                             "reason": "Directly stated in novatech-001."
                         }
                     ]
@@ -169,7 +169,7 @@ class MockLLMProvider(LLMProvider):
         # =========================================================================
         # Scenario 2: Pricing & Packaging
         # =========================================================================
-        if "pricing" in lower_user or "cost" in lower_user or "standard tier" in lower_user:
+        if "pricing" in q_text or "cost" in q_text or "standard tier" in q_text:
             if is_drafter:
                 return json.dumps({
                     "answer": "NovaSync Standard tier costs $499 per month per cluster, covering up to 5 worker nodes."
@@ -180,15 +180,15 @@ class MockLLMProvider(LLMProvider):
                     "failure_type": None,
                     "claims": [
                         {
-                            "claim": "NovaSync Standard tier costs $499 per month per cluster",
+                            "text": "NovaSync Standard tier costs $499 per month per cluster",
                             "status": "supported",
-                            "evidence_ids": ["novatech-004"],
+                            "source_ids": ["novatech-004"],
                             "reason": "Directly stated in novatech-004."
                         },
                         {
-                            "claim": "NovaSync Standard tier covers up to 5 worker nodes",
+                            "text": "NovaSync Standard tier covers up to 5 worker nodes",
                             "status": "supported",
-                            "evidence_ids": ["novatech-004"],
+                            "source_ids": ["novatech-004"],
                             "reason": "Directly stated in novatech-004."
                         }
                     ]
@@ -203,7 +203,7 @@ class MockLLMProvider(LLMProvider):
         # =========================================================================
         # Scenario 4: Contradicted Platform Support (Windows Server)
         # =========================================================================
-        if "windows" in lower_user or "platforms" in lower_user:
+        if "windows" in q_text or "platforms" in q_text:
             if is_drafter:
                 return json.dumps({
                     "answer": "NovaSync officially supports production deployments on Linux, Kubernetes 1.25+, and Windows Server."
@@ -211,18 +211,18 @@ class MockLLMProvider(LLMProvider):
             if is_checker:
                 return json.dumps({
                     "passed": False,
-                    "failure_type": "contradicted_fact",
+                    "failure_type": "evidence_grounding_failure",
                     "claims": [
                         {
-                            "claim": "NovaSync officially supports server installations on Linux and Kubernetes",
+                            "text": "NovaSync officially supports server installations on Linux and Kubernetes",
                             "status": "supported",
-                            "evidence_ids": ["novatech-003"],
+                            "source_ids": ["novatech-003"],
                             "reason": "Directly supported by novatech-003."
                         },
                         {
-                            "claim": "NovaSync supports Windows Server in production",
+                            "text": "NovaSync supports Windows Server in production",
                             "status": "contradicted",
-                            "evidence_ids": ["novatech-003"],
+                            "source_ids": ["novatech-003"],
                             "reason": "novatech-003 states Windows Server is in invite-only private preview and NOT supported in production."
                         }
                     ]
@@ -234,11 +234,10 @@ class MockLLMProvider(LLMProvider):
                     "correction_notes": "Resolved contradiction: clarified that Windows Server is only in private preview and not supported for production."
                 })
 
-
         # =========================================================================
         # Scenario 6: Multi-claim with one fabricated fact (Ruby on Rails)
         # =========================================================================
-        if "technology stack" in lower_user or "languages" in lower_user or "ruby" in lower_user:
+        if "technology stack" in q_text or "languages" in q_text or "power novasync" in q_text:
             if is_drafter:
                 return json.dumps({
                     "answer": "NovaSync's core streaming engine is written in Rust, APIs are developed in Go with gRPC, metadata persistence uses PostgreSQL, and the frontend dashboard is written in Ruby on Rails."
@@ -246,30 +245,30 @@ class MockLLMProvider(LLMProvider):
             if is_checker:
                 return json.dumps({
                     "passed": False,
-                    "failure_type": "unsupported_fact",
+                    "failure_type": "evidence_grounding_failure",
                     "claims": [
                         {
-                            "claim": "NovaSync core streaming engine is written in Rust",
+                            "text": "NovaSync core streaming engine is written in Rust",
                             "status": "supported",
-                            "evidence_ids": ["novatech-006"],
+                            "source_ids": ["novatech-006"],
                             "reason": "Corroborated by novatech-006."
                         },
                         {
-                            "claim": "Management plane APIs are developed in Go with gRPC",
+                            "text": "Management plane APIs are developed in Go with gRPC",
                             "status": "supported",
-                            "evidence_ids": ["novatech-006"],
+                            "source_ids": ["novatech-006"],
                             "reason": "Corroborated by novatech-006."
                         },
                         {
-                            "claim": "Metadata persistence is handled via clustered PostgreSQL",
+                            "text": "Metadata persistence is handled via clustered PostgreSQL",
                             "status": "supported",
-                            "evidence_ids": ["novatech-006"],
+                            "source_ids": ["novatech-006"],
                             "reason": "Corroborated by novatech-006."
                         },
                         {
-                            "claim": "Frontend dashboard is written in Ruby on Rails",
+                            "text": "Frontend dashboard is written in Ruby on Rails",
                             "status": "unsupported",
-                            "evidence_ids": [],
+                            "source_ids": [],
                             "reason": "No evidence mentions a frontend dashboard or Ruby on Rails."
                         }
                     ]
@@ -290,9 +289,9 @@ class MockLLMProvider(LLMProvider):
                 "failure_type": None,
                 "claims": [
                     {
-                        "claim": "NovaTech operates NovaSync",
+                        "text": "NovaTech operates NovaSync",
                         "status": "supported",
-                        "evidence_ids": ["novatech-002"],
+                        "source_ids": ["novatech-002"],
                         "reason": "Supported by product overview."
                     }
                 ]

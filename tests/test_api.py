@@ -11,8 +11,8 @@ def test_health_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert "provider" in data
-    assert "model" in data
+    assert data["provider"] == "mock"
+    assert data["model"] == "deterministic-mock"
     assert data["evidence_count"] == 10
 
 
@@ -35,6 +35,8 @@ def test_answer_endpoint_successful_pipeline():
     assert response.status_code == 200
     data = response.json()
     assert data["question"] == payload["question"]
+    assert data["provider"] == "mock"
+    assert data["model"] == "deterministic-mock"
     assert "draft" in data
     assert "check" in data
     assert "final" in data

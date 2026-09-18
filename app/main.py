@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     logger.info("EVIDENCEGUARD AI SERVICE INITIALIZING")
     logger.info(f"Effective Provider: {settings.effective_provider}")
-    logger.info(f"Model Name:         {settings.MODEL_NAME}")
+    logger.info(f"Model Name:         {settings.effective_model}")
     logger.info(f"Environment:        {settings.ENVIRONMENT}")
     logger.info("=" * 60)
     yield

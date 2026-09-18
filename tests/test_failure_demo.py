@@ -10,7 +10,7 @@ async def test_intentional_failure_story_reproducibility():
     """
     Formally proves the three conditions of the self-check loop:
     1. DRAFT != TRUTH (Drafter generates plausible error: 2018 instead of 2019)
-    2. CHECK = FAIL   (Adversarial auditor detects contradicted founding year)
+    2. CHECK = FAIL   (Adversarial auditor detects contradicted founding year under evidence_grounding_failure)
     3. CORRECTION = SUCCESS (Corrector replaces 2018 with 2019 based strictly on evidence)
     """
     provider = MockLLMProvider()
@@ -41,10 +41,11 @@ async def test_intentional_failure_story_reproducibility():
 
     # 2. PROVE: CHECK = FAIL
     assert response.check.passed is False, "Checker must FAIL on contradicted/unsupported draft."
-    assert response.check.failure_type == "contradicted_fact"
+    assert response.check.failure_type == "evidence_grounding_failure"
     contradicted_claims = [c for c in response.check.claims if c.status == "contradicted"]
     assert len(contradicted_claims) > 0, "Must identify the specific contradicted claim."
-    assert hallucinated_year in contradicted_claims[0].claim
+    claim_text = getattr(contradicted_claims[0], "claim", getattr(contradicted_claims[0], "text", ""))
+    assert hallucinated_year in claim_text
     assert evidence_id in contradicted_claims[0].evidence_ids
 
     # 3. PROVE: CORRECTION = SUCCESS

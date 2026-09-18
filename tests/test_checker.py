@@ -52,10 +52,10 @@ async def test_checker_detects_contradicted_claim(sample_evidence):
     result = await run_checker(question, draft, sample_evidence, provider)
 
     assert result.passed is False
-    assert result.failure_type == "contradicted_fact"
+    assert result.failure_type == "evidence_grounding_failure"
     contradicted = [c for c in result.claims if c.status == "contradicted"]
     assert len(contradicted) == 1
-    assert "2018" in contradicted[0].claim
+    assert "2018" in (contradicted[0].claim or contradicted[0].text)
     assert "novatech-001" in contradicted[0].evidence_ids
 
 
@@ -68,7 +68,7 @@ async def test_checker_detects_unsupported_claim(sample_evidence):
     result = await run_checker(question, draft, sample_evidence, provider)
 
     assert result.passed is False
-    assert result.failure_type == "unsupported_fact"
+    assert result.failure_type == "evidence_grounding_failure"
     assert any(c.status == "unsupported" for c in result.claims)
 
 
@@ -76,7 +76,7 @@ async def test_checker_detects_unsupported_claim(sample_evidence):
 async def test_checker_safety_rule_overrides_hallucinated_passed(sample_evidence):
     """
     Even if the LLM produces passed=true, if a claim is unsupported/contradicted,
-    our deterministic safety code must enforce passed=False.
+    our deterministic safety code must enforce passed=False and failure_type=evidence_grounding_failure.
     """
     provider = MockLLMProvider()
     # Queue a response where the LLM claims passed: true despite an unsupported claim
@@ -98,7 +98,7 @@ async def test_checker_safety_rule_overrides_hallucinated_passed(sample_evidence
 
     # Safety rule should force passed to False
     assert result.passed is False
-    assert result.failure_type == "unsupported_fact"
+    assert result.failure_type == "evidence_grounding_failure"
 
 
 @pytest.mark.asyncio
@@ -110,6 +110,6 @@ async def test_checker_malformed_json_fails_safely(sample_evidence):
     result = await run_checker("Who founded NovaTech?", "NovaTech was founded in 2019", sample_evidence, provider)
 
     assert result.passed is False
-    assert result.failure_type == "unsupported_fact"
+    assert result.failure_type == "evidence_grounding_failure"
     assert len(result.claims) == 1
     assert "Failing safely" in result.claims[0].reason

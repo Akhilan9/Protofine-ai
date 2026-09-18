@@ -1,6 +1,6 @@
 """Pydantic domain models for EvidenceGuard AI."""
 from typing import List, Optional, Literal
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, AliasChoices
 
 
 class EvidenceItem(BaseModel):
@@ -14,16 +14,23 @@ class EvidenceItem(BaseModel):
 
 class ClaimVerification(BaseModel):
     """Granular verification result for an individual factual claim."""
-    claim: str = Field(..., description="Extracted atomic factual statement from the draft")
+    claim: str = Field(
+        ...,
+        validation_alias=AliasChoices("claim", "text"),
+        description="Extracted atomic factual statement from the draft"
+    )
     status: Literal["supported", "unsupported", "contradicted"] = Field(
         ...,
         description="Classification of claim against evidence: supported, unsupported, or contradicted"
     )
     evidence_ids: List[str] = Field(
         default_factory=list,
+        validation_alias=AliasChoices("evidence_ids", "source_ids"),
         description="Source IDs of evidence used to verify or refute this claim"
     )
     reason: str = Field(..., description="Specific explanation of why the claim is supported or rejected")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class DraftResult(BaseModel):
@@ -34,10 +41,10 @@ class DraftResult(BaseModel):
 
 class CheckResult(BaseModel):
     """The outcome of the skeptical factual claim verification pass."""
-    passed: bool = Field(..., description="True if every claim is supported; False if any claim is unsupported/contradicted")
-    failure_type: Optional[Literal["unsupported_fact", "contradicted_fact", "insufficient_evidence"]] = Field(
+    passed: bool = Field(..., description="True if every claim is supported; False if any claim is unsupported or contradicted")
+    failure_type: Optional[Literal["evidence_grounding_failure"]] = Field(
         default=None,
-        description="The specific failure detected if check failed"
+        description="The targeted failure family if check failed (evidence_grounding_failure)"
     )
     claims: List[ClaimVerification] = Field(
         default_factory=list,
@@ -70,6 +77,8 @@ class AnswerRequest(BaseModel):
 class AnswerResponse(BaseModel):
     """Comprehensive structured response containing draft, check audit, and final result."""
     question: str = Field(..., description="Original user question")
+    provider: str = Field(..., description="Active LLM provider (gemini or mock)")
+    model: str = Field(..., description="Active model name (e.g. gemini-2.5-flash or deterministic-mock)")
     evidence_used: List[EvidenceItem] = Field(..., description="The exact evidence records supplied to the pipeline")
     draft: DraftResult = Field(..., description="Initial draft generated in Stage 1")
     check: CheckResult = Field(..., description="Adversarial check results from Stage 2")
@@ -79,6 +88,6 @@ class AnswerResponse(BaseModel):
 class HealthResponse(BaseModel):
     """System health check response."""
     status: str = Field(default="ok")
-    provider: str = Field(..., description="Active LLM provider (e.g. openai, mock)")
+    provider: str = Field(..., description="Active LLM provider (gemini or mock)")
     model: str = Field(..., description="Configured model name")
     evidence_count: int = Field(..., description="Number of loaded evidence records")

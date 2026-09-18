@@ -3,16 +3,15 @@ import json
 import logging
 import re
 from typing import List
-from pydantic import ValidationError
 from app.models import EvidenceItem, CheckResult, ClaimVerification
 from app.llm.base import LLMProvider
 
 logger = logging.getLogger("evidenceguard.services.checker")
 
 CHECKER_SYSTEM_PROMPT = """[ROLE: CHECKER]
-You are an adversarial factual integrity auditor.
+You are an adversarial factual integrity auditor and verification system, NOT the answer generator.
 Your job is to rigorously evaluate an unverified draft answer against an explicit, trusted evidence base.
-You must NOT assume the draft is correct. Treat the draft with skepticism.
+You must NOT assume the draft is correct. Treat the draft with skepticism. Do NOT attempt to repair the draft.
 
 Instructions:
 1. Extract every discrete factual claim made in the draft answer.
@@ -26,16 +25,16 @@ Instructions:
 6. Determine the overall 'passed' status:
    - 'passed' is true ONLY IF every single claim is 'supported'.
    - 'passed' is false IF ANY claim is 'unsupported' or 'contradicted'.
-7. If passed is false, set 'failure_type' to either "contradicted_fact" (if any claim is contradicted) or "unsupported_fact" (if claims are missing evidence).
+7. If passed is false, set 'failure_type' to "evidence_grounding_failure". If passed is true, set 'failure_type' to null.
 8. Return your response strictly as valid JSON adhering to this schema:
 {
   "passed": false,
-  "failure_type": "unsupported_fact",
+  "failure_type": "evidence_grounding_failure",
   "claims": [
     {
-      "claim": "The exact factual assertion from draft",
+      "text": "The exact factual assertion from draft",
       "status": "supported | unsupported | contradicted",
-      "evidence_ids": ["source-id-1"],
+      "source_ids": ["source-id-1"],
       "reason": "Specific explanation referencing the evidence or noting omission."
     }
   ]
@@ -90,12 +89,12 @@ Perform your adversarial claim-by-claim audit now. Return strict JSON."""
 
     try:
         data = json.loads(cleaned)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         logger.error(f"Checker response failed JSON decoding: {cleaned}")
         # Return fallback failure rather than silently passing
         return CheckResult(
             passed=False,
-            failure_type="unsupported_fact",
+            failure_type="evidence_grounding_failure",
             claims=[
                 ClaimVerification(
                     claim=draft_answer,
@@ -106,16 +105,16 @@ Perform your adversarial claim-by-claim audit now. Return strict JSON."""
             ]
         )
 
-    # Normalize claim schema in case LLM outputs 'text' instead of 'claim' or 'source_ids' instead of 'evidence_ids'
+    # Normalize claim schema in case LLM outputs 'claim' vs 'text' or 'evidence_ids' vs 'source_ids'
     raw_claims = data.get("claims", [])
     normalized_claims: List[ClaimVerification] = []
 
     for c in raw_claims:
-        claim_text = c.get("claim") or c.get("text") or "Unspecified claim"
+        claim_text = c.get("text") or c.get("claim") or "Unspecified claim"
         status = c.get("status", "unsupported").lower()
         if status not in ("supported", "unsupported", "contradicted"):
             status = "unsupported"
-        evidence_ids = c.get("evidence_ids") or c.get("source_ids") or []
+        evidence_ids = c.get("source_ids") or c.get("evidence_ids") or []
         reason = c.get("reason") or "No justification provided."
 
         normalized_claims.append(
@@ -134,7 +133,7 @@ Perform your adversarial claim-by-claim audit now. Return strict JSON."""
 
     if has_failures:
         passed = False
-        failure_type = "contradicted_fact" if has_contradicted else "unsupported_fact"
+        failure_type = "evidence_grounding_failure"
     else:
         passed = True if normalized_claims else False
         failure_type = None

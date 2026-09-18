@@ -1,5 +1,4 @@
-"""Application configuration and environment management."""
-import os
+"""Application configuration and environment management for Google Gemini & Mock providers."""
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -12,10 +11,10 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    # LLM Settings
-    OPENAI_API_KEY: Optional[str] = None
-    MODEL_NAME: str = "gpt-4o-mini"
-    LLM_PROVIDER: str = "mock"  # Can be "openai" or "mock"
+    # Google Gemini Settings
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    LLM_PROVIDER: str = "mock"  # "gemini" or "mock"
     REQUEST_TIMEOUT_SECONDS: float = 30.0
 
     # Server Settings
@@ -26,10 +25,19 @@ class Settings(BaseSettings):
 
     @property
     def effective_provider(self) -> str:
-        """Automatically use 'openai' if an explicit key is provided and LLM_PROVIDER is not explicitly 'mock'."""
-        if self.LLM_PROVIDER.lower() == "openai" or (self.OPENAI_API_KEY and self.LLM_PROVIDER.lower() != "mock"):
-            return "openai"
+        """Return 'gemini' if explicitly selected or if an active key is present without an explicit 'mock' setting."""
+        if self.LLM_PROVIDER.lower() == "gemini":
+            return "gemini"
+        if self.GEMINI_API_KEY and self.LLM_PROVIDER.lower() != "mock":
+            return "gemini"
         return "mock"
+
+    @property
+    def effective_model(self) -> str:
+        """Return the actual configured model name according to active provider."""
+        if self.effective_provider == "gemini":
+            return self.GEMINI_MODEL
+        return "deterministic-mock"
 
 
 settings = Settings()

@@ -94,6 +94,35 @@
       margin-left: 0.5rem;
     }
 
+    .provider-status-badge {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 1px solid var(--card-border);
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .provider-status-badge.mock {
+      border-color: rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    .provider-status-badge.gemini {
+      border-color: rgba(6, 182, 212, 0.4);
+      color: #38bdf8;
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.15);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
     .header-links a {
       color: var(--text-muted);
       text-decoration: none;
@@ -272,7 +301,7 @@
     .stage-pill.verified { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
     .stage-pill.corrected { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning); }
     .stage-pill.flagged { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
-    .stage-pill.draft { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .stage-pill.draft { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); font-family: var(--font-mono); }
 
     .stage-body {
       font-size: 0.95rem;
@@ -394,10 +423,15 @@
           <h1>EvidenceGuard AI <span class="badge-intern">Self-Check Loop</span></h1>
         </div>
       </div>
-      <div class="header-links">
-        <a href="/docs" target="_blank">Swagger /docs</a>
-        <a href="/api/v1/evidence" target="_blank">Raw Evidence</a>
-        <a href="/api/v1/health" target="_blank">Health</a>
+      <div class="header-right">
+        <div id="providerStatusBadge" class="provider-status-badge mock">
+          <span>Mode: Loading...</span>
+        </div>
+        <div class="header-links">
+          <a href="/docs" target="_blank">Swagger /docs</a>
+          <a href="/api/v1/evidence" target="_blank">Evidence</a>
+          <a href="/api/v1/health" target="_blank">Health</a>
+        </div>
       </div>
     </header>
 
@@ -459,7 +493,7 @@
           <div class="stage-title">
             <span>Stage 1: LLM Drafter</span>
           </div>
-          <span class="stage-pill draft" id="draftModelPill">gpt-4o-mini</span>
+          <span class="stage-pill draft" id="draftModelPill">deterministic-mock</span>
         </div>
         <div class="stage-body" id="draftAnswerText"></div>
       </div>
@@ -505,6 +539,26 @@
       5: "What was NovaTech's total annual recurring revenue and valuation in 2024?",
       6: "What programming languages and databases power NovaSync?"
     };
+
+    // Load System Health & Provider Badge
+    async function loadHealth() {
+      try {
+        const res = await fetch('/api/v1/health');
+        const data = await res.json();
+        const badge = document.getElementById('providerStatusBadge');
+        if (data.provider === 'gemini') {
+          badge.className = "provider-status-badge gemini";
+          badge.innerHTML = `<span><strong>REAL GEMINI</strong> &bull; Provider: gemini &bull; Model: ${data.model}</span>`;
+        } else {
+          badge.className = "provider-status-badge mock";
+          badge.innerHTML = `<span><strong>DETERMINISTIC DEMO</strong> &bull; Provider: mock &bull; Model: ${data.model}</span>`;
+        }
+        document.getElementById('draftModelPill').textContent = data.model;
+      } catch (e) {
+        console.error("Health check failed", e);
+      }
+    }
+    loadHealth();
 
     // Load Evidence Base on start
     async function loadEvidence() {
@@ -564,7 +618,8 @@
       document.getElementById('pipelineGrid').style.display = 'grid';
 
       // Stage 1
-      document.getElementById('draftModelPill').textContent = data.draft.model;
+      const activeModel = data.model || (data.draft && data.draft.model) || "deterministic-mock";
+      document.getElementById('draftModelPill').textContent = activeModel;
       document.getElementById('draftAnswerText').textContent = data.draft.answer;
 
       // Stage 2
@@ -574,22 +629,26 @@
         checkPill.className = "stage-pill verified";
         document.getElementById('checkSummaryText').textContent = "All claims corroborated by trusted evidence.";
       } else {
-        checkPill.textContent = `CHECK FAILED: ${data.check.failure_type || 'UNSUPPORTED_FACT'}`;
+        checkPill.textContent = `CHECK FAILED: EVIDENCE_GROUNDING_FAILURE`;
         checkPill.className = "stage-pill flagged";
-        document.getElementById('checkSummaryText').textContent = "Adversarial auditor detected ungrounded or contradictory claims.";
+        document.getElementById('checkSummaryText').textContent = "Adversarial auditor detected ungrounded or contradictory claims against supplied evidence.";
       }
 
       const claimsContainer = document.getElementById('claimsContainer');
-      claimsContainer.innerHTML = data.check.claims.map(c => `
-        <div class="claim-item ${c.status}">
-          <div class="claim-top">
-            <span class="claim-status">${c.status.toUpperCase()}</span>
-            <span class="claim-sources">${c.evidence_ids.length ? c.evidence_ids.join(', ') : 'No Evidence Match'}</span>
+      claimsContainer.innerHTML = data.check.claims.map(c => {
+        const claimText = c.claim || c.text || "Claim";
+        const sources = (c.evidence_ids && c.evidence_ids.length) ? c.evidence_ids.join(', ') : ((c.source_ids && c.source_ids.length) ? c.source_ids.join(', ') : 'No Evidence Match');
+        return `
+          <div class="claim-item ${c.status}">
+            <div class="claim-top">
+              <span class="claim-status">${c.status.toUpperCase()}</span>
+              <span class="claim-sources">${sources}</span>
+            </div>
+            <div style="font-weight: 500; margin-bottom: 0.2rem;">"${claimText}"</div>
+            <div class="claim-reason">${c.reason}</div>
           </div>
-          <div style="font-weight: 500; margin-bottom: 0.2rem;">"${c.claim}"</div>
-          <div class="claim-reason">${c.reason}</div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       // Stage 3
       const finalPill = document.getElementById('finalStatusPill');

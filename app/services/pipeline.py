@@ -4,16 +4,16 @@ import time
 from typing import Optional, List
 from app.models import (
     AnswerResponse,
-    EvidenceItem,
     DraftResult,
-    FinalResult,
-    CheckResult
+    FinalResult
 )
 from app.data.loader import get_all_evidence, get_evidence_by_ids
 from app.llm import get_llm_provider, LLMProvider
+from app.llm.gemini_provider import GeminiProvider
 from app.services.drafter import run_drafter
 from app.services.checker import run_checker
 from app.services.corrector import run_corrector
+from app.config import settings
 
 logger = logging.getLogger("evidenceguard.pipeline")
 
@@ -27,11 +27,16 @@ async def run_evidenceguard_pipeline(
     """
     Executes the three-stage self-check factual answer pipeline:
     1. Drafter Pass (Draft answer from evidence)
-    2. Checker Pass (Adversarial claim verification)
-    3. Finalization (Verified or Correction Pass)
+    2. Checker Pass (Adversarial claim verification against evidence)
+    3. Finalization (Verified or Precision Correction Pass)
     """
     start_time = time.perf_counter()
     active_provider = provider or get_llm_provider()
+
+    # Determine provider identity cleanly
+    is_gemini = isinstance(active_provider, GeminiProvider)
+    provider_name = "gemini" if is_gemini else "mock"
+    model_name = active_provider.get_model_name()
 
     # Retrieve relevant evidence records
     if evidence_ids:
@@ -44,14 +49,14 @@ async def run_evidenceguard_pipeline(
 
     logger.info(
         f"[PIPELINE_START] Question: '{question}' | EvidenceCount: {len(evidence)} | "
-        f"Provider: {active_provider.get_model_name()}"
+        f"Provider: {provider_name} | Model: {model_name}"
     )
 
     # ---------------------------------------------------------
     # STAGE 1: DRAFTER PASS
     # ---------------------------------------------------------
     if forced_draft:
-        draft = DraftResult(answer=forced_draft, model=active_provider.get_model_name())
+        draft = DraftResult(answer=forced_draft, model=model_name)
         logger.info(f"[STAGE 1: DRAFT (FORCED)] {draft.answer}")
     else:
         draft = await run_drafter(question, evidence, active_provider)
@@ -83,12 +88,14 @@ async def run_evidenceguard_pipeline(
 
     elapsed = time.perf_counter() - start_time
     logger.info(
-        f"[PIPELINE_COMPLETE] Status: {final.status} | Latency: {elapsed:.3f}s | "
-        f"Claims: {len(check.claims)}"
+        f"[PIPELINE_COMPLETE] Status: {final.status} | Provider: {provider_name} | "
+        f"Model: {model_name} | Latency: {elapsed:.3f}s | Claims: {len(check.claims)}"
     )
 
     return AnswerResponse(
         question=question,
+        provider=provider_name,
+        model=model_name,
         evidence_used=evidence,
         draft=draft,
         check=check,

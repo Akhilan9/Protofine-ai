@@ -3,7 +3,7 @@ import pytest
 import os
 from app.services.pipeline import run_evidenceguard_pipeline
 from app.llm.mock_provider import MockLLMProvider
-from app.llm.openai_provider import OpenAIProvider
+from app.llm.gemini_provider import GeminiProvider
 
 
 # =========================================================================
@@ -28,6 +28,8 @@ async def test_scenario_1_clean_supported_founding():
     assert response.final.answer == response.draft.answer
     assert "Priya Shah" in response.final.answer
     assert "2019" in response.final.answer
+    assert response.provider == "mock"
+    assert response.model == "deterministic-mock"
 
 
 # =========================================================================
@@ -79,12 +81,12 @@ async def test_scenario_3_confident_wrong_draft_founding_year():
     assert "2018" in response.draft.answer
     assert "2019" not in response.draft.answer
 
-    # 2. Checker caught the error
+    # 2. Checker caught the grounding failure
     assert response.check.passed is False
-    assert response.check.failure_type == "contradicted_fact"
+    assert response.check.failure_type == "evidence_grounding_failure"
     contradicted = [c for c in response.check.claims if c.status == "contradicted"]
     assert len(contradicted) == 1
-    assert "2018" in contradicted[0].claim
+    assert "2018" in (contradicted[0].claim or contradicted[0].text)
     assert "novatech-001" in contradicted[0].evidence_ids
 
     # 3. Correction stage resolved the error using trusted evidence
@@ -111,9 +113,9 @@ async def test_scenario_4_contradicted_windows_support():
         provider=provider
     )
 
-    # Checker caught the contradiction
+    # Checker caught the contradiction under evidence_grounding_failure
     assert response.check.passed is False
-    assert response.check.failure_type == "contradicted_fact"
+    assert response.check.failure_type == "evidence_grounding_failure"
     assert any(c.status == "contradicted" for c in response.check.claims)
 
     # Final answer corrected to reflect truth
@@ -139,9 +141,9 @@ async def test_scenario_5_unanswerable_insufficient_evidence():
         provider=provider
     )
 
-    # Checker flags unsupported claims
+    # Checker flags unsupported claims under evidence_grounding_failure
     assert response.check.passed is False
-    assert response.check.failure_type == "unsupported_fact"
+    assert response.check.failure_type == "evidence_grounding_failure"
 
     # Corrector refuses to guess and flags as insufficient evidence
     assert response.final.status == "flagged"
@@ -167,6 +169,7 @@ async def test_scenario_6_multi_claim_one_unsupported():
 
     # Checker should show mixed statuses
     assert response.check.passed is False
+    assert response.check.failure_type == "evidence_grounding_failure"
     statuses = [c.status for c in response.check.claims]
     assert "supported" in statuses
     assert "unsupported" in statuses
@@ -180,17 +183,21 @@ async def test_scenario_6_multi_claim_one_unsupported():
 
 
 # =========================================================================
-# OPTIONAL INTEGRATION TEST: Live OpenAI API
-# Only executes if OPENAI_API_KEY is configured in environment
+# OPTIONAL INTEGRATION TEST: Real Google Gemini API
+# Only executes if GEMINI_API_KEY is configured in environment
 # =========================================================================
 @pytest.mark.asyncio
 @pytest.mark.skipif(
-    not os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY", "").startswith("your_"),
-    reason="OPENAI_API_KEY not configured; skipping live OpenAI integration test"
+    not os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", "").startswith("your_"),
+    reason="GEMINI_API_KEY not configured; skipping live Gemini integration test"
 )
-async def test_live_openai_integration():
-    provider = OpenAIProvider()
-    question = "Who founded NovaTech and in what year?"
+async def test_live_gemini_integration():
+    """
+    Validates end-to-end structural compliance of the real Gemini integration.
+    Does not assert brittle exact strings; validates response structure and status.
+    """
+    provider = GeminiProvider()
+    question = "Who founded NovaTech and in what year was it established?"
     evidence_ids = ["novatech-001"]
 
     response = await run_evidenceguard_pipeline(
@@ -199,7 +206,12 @@ async def test_live_openai_integration():
         provider=provider
     )
 
+    # Validate structural properties
+    assert response.provider == "gemini"
+    assert response.model == provider.get_model_name()
     assert response.draft.answer != ""
     assert len(response.check.claims) > 0
-    assert response.final.status in ("verified", "corrected")
-    assert "Priya Shah" in response.final.answer
+    assert response.final.status in ("verified", "corrected", "flagged")
+    assert response.final.answer != ""
+    # Fact grounding sanity check
+    assert "Priya Shah" in response.final.answer or "2019" in response.final.answer

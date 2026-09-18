@@ -19,7 +19,7 @@ async def health_check():
     return HealthResponse(
         status="ok",
         provider=settings.effective_provider,
-        model=settings.MODEL_NAME,
+        model=settings.effective_model,
         evidence_count=len(evidence)
     )
 

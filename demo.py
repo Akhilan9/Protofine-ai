@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.llm.mock_provider import MockLLMProvider
-from app.llm.openai_provider import OpenAIProvider
+from app.llm.gemini_provider import GeminiProvider
 from app.services.pipeline import run_evidenceguard_pipeline
 from app.data.loader import get_evidence_by_ids
 
@@ -18,7 +18,7 @@ async def main():
     parser.add_argument(
         "--real",
         action="store_true",
-        help="Use real OpenAI API instead of deterministic mock (requires OPENAI_API_KEY)"
+        help="Use real Google Gemini API instead of deterministic mock (requires GEMINI_API_KEY)"
     )
     args = parser.parse_args()
 
@@ -27,13 +27,13 @@ async def main():
     evidence_ids = ["novatech-001"]
 
     if args.real:
-        print("\n[INFO] Running demo with LIVE OpenAI model...")
-        provider = OpenAIProvider()
+        print("\n[INFO] Running demo with REAL Google Gemini API...")
+        provider = GeminiProvider()
         forced_draft = None
     else:
         print("\n[INFO] Running demo with DETERMINISTIC mock provider (no API key required)...")
         provider = MockLLMProvider()
-        # Force the plausible failure scenario
+        # Force the plausible failure scenario in the mock
         provider.set_force_failure("plausible_founding_year_error")
         # Plausible wrong draft that looks completely believable to a human
         forced_draft = "NovaTech was founded in October 2018 by Dr. Priya Shah and Marcus Vance in Seattle, Washington."
@@ -52,6 +52,8 @@ async def main():
     print("\n" + "=" * 60)
     print("       EVIDENCEGUARD SELF-CHECK DEMO")
     print("=" * 60)
+    print(f"PROVIDER: {result.provider}")
+    print(f"MODEL:    {result.model}")
     print("\nQUESTION:")
     print(result.question)
 
@@ -66,16 +68,17 @@ async def main():
         print("PASSED")
     else:
         print("FAILED")
-        print(f"\nFAILURE TYPE:\n{result.check.failure_type}")
+        print(f"\nFAILURE FAMILY:\n{result.check.failure_type}")
         print("\nCLAIM-BY-CLAIM SKEPTICAL AUDIT:")
         for c in result.check.claims:
             badge = f"[{c.status.upper()}]"
+            claim_text = getattr(c, "claim", getattr(c, "text", ""))
             sources = f"(Sources: {', '.join(c.evidence_ids)})" if c.evidence_ids else "(No source match)"
             print(f"  * {badge:<16} {sources}")
-            print(f"    Claim:  \"{c.claim}\"")
+            print(f"    Claim:  \"{claim_text}\"")
             print(f"    Reason: {c.reason}\n")
 
-    print("CORRECTED ANSWER:")
+    print("CORRECTED / VERIFIED ANSWER:")
     print(f"\"{result.final.answer}\"")
 
     print("\nFINAL STATUS:")
