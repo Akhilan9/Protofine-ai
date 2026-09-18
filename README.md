@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.13-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
 [![Google Gemini](https://img.shields.io/badge/Google%20Gemini-google--genai-4285F4.svg)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/pytest-19%20passed%2C%201%20skipped-brightgreen.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-20%20passed-brightgreen.svg)](https://docs.pytest.org/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
 > **Submission for the Protofine.ai Applied AI Engineering Intern Build Task**  
@@ -32,7 +32,7 @@ Within this targeted failure family, claims are classified into three atomic sta
 > **Explicit Scope Boundary:**
 > This system is **NOT** a general truth detector. It does **NOT** prove that information is true in the cosmic or real-world sense. It only evaluates factual support **against the supplied trusted evidence**.
 
-By restricting the problem to verifying grounding against explicit, trusted source records, we convert an unsolvable philosophical dilemma into a reliable, auditable engineering self-check loop.
+By restricting the problem to verifying grounding against explicit, trusted source records, we convert an unsolvable philosophical dilemma into a bounded, evidence-grounded, and auditable verification loop.
 
 ---
 
@@ -67,7 +67,7 @@ flowchart TD
 
 1. **Trusted Evidence Base (`app/data/evidence.json`)**: 10 deterministic records for a fictional cloud platform (*NovaTech* and its product *NovaSync*). Serves as the ground truth against which all claims are audited.
 2. **Provider Layer (`app/llm/`)**: Decoupled interface (`LLMProvider`) supporting:
-   - **`GeminiProvider`**: Production implementation utilizing the official `google-genai` SDK for real Google Gemini model inference.
+   - **`GeminiProvider`**: Real Gemini implementation utilizing the official `google-genai` SDK for real Google Gemini model inference.
    - **`MockLLMProvider`**: Deterministic provider for 100% reproducible offline unit tests and failure demonstrations without API keys or network latency.
 3. **Stage 1: Drafter Service (`app/services/drafter.py`)**: Guided by constructive role prompt (`[ROLE: DRAFTER]`) to formulate an answer grounded in evidence. The raw draft is preserved without artificial pre-filtering to expose real model behavior.
 4. **Stage 2: Adversarial Checker (`app/services/checker.py`)**: Operating under skeptical auditor persona (`[ROLE: CHECKER]`). Isolates atomic factual claims, compares each against evidence text, classifies status (`supported`, `unsupported`, `contradicted`), cites source IDs, and explains its verdict.
@@ -86,7 +86,7 @@ The system explicitly decouples real LLM execution from deterministic evaluation
 ### Real Gemini Mode (`LLM_PROVIDER=gemini`)
 - Uses the official `google-genai` SDK (`from google import genai`).
 - Requires `GEMINI_API_KEY`.
-- Configurable model via `GEMINI_MODEL` (default: `gemini-2.5-flash`).
+- Configurable model via `GEMINI_MODEL` (default: `gemini-3.5-flash-lite`).
 - Enforces structured JSON output via `response_mime_type="application/json"` and Pydantic validation.
 - Controlled error handling: handles timeouts, authentication failures, and rate limits gracefully without leaking secrets or falling back silently.
 
@@ -134,7 +134,7 @@ The system explicitly decouples real LLM execution from deterministic evaluation
      ```bash
      LLM_PROVIDER=gemini
      GEMINI_API_KEY=your_gemini_api_key_here
-     GEMINI_MODEL=gemini-2.5-flash
+     GEMINI_MODEL=gemini-3.5-flash-lite
      ```
 
 5. **Start the FastAPI server**:
@@ -156,7 +156,7 @@ Configured in `.env.example`:
 |---|---|---|
 | `LLM_PROVIDER` | `mock` | `mock` for deterministic testing; `gemini` for live Google Gemini |
 | `GEMINI_API_KEY` | *(empty)* | Google Gemini API key (required only if `LLM_PROVIDER=gemini`) |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Configured Gemini model (`gemini-2.5-flash`, `gemini-1.5-flash`, etc.) |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Configured Gemini model (`gemini-3.5-flash-lite`, etc.) |
 | `HOST` | `127.0.0.1` | Local bind host |
 | `PORT` | `8000` | Local bind port |
 | `LOG_LEVEL` | `INFO` | Application log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
@@ -228,16 +228,19 @@ tests/test_pipeline.py::test_scenario_3_confident_wrong_draft_founding_year PASS
 tests/test_pipeline.py::test_scenario_4_contradicted_windows_support PASSED [ 85%]
 tests/test_pipeline.py::test_scenario_5_unanswerable_insufficient_evidence PASSED [ 90%]
 tests/test_pipeline.py::test_scenario_6_multi_claim_one_unsupported PASSED [ 95%]
-tests/test_pipeline.py::test_live_gemini_integration SKIPPED (Requires key) [100%]
+tests/test_pipeline.py::test_live_gemini_integration PASSED              [100%]
 
-======================== 19 passed, 1 skipped in 1.84s ========================
+======================== 20 passed, 1 warning in 6.43s ========================
 ```
 
 ---
 
-## 9. Running the CLI Failure Demo
+## 9. Running the CLI Demonstrations
 
-Execute the deterministic demonstration anytime without needing an API key:
+### 9.1 Deterministic Failure Demo (`python demo.py`)
+
+The deterministic mock provider is explicitly responsible for demonstrating the **reproducible intentional failure story** without requiring external credentials:
+`2018 (Plausible Draft) → CONTRADICTED (Stage 2 Audit) → 2019 (Stage 3 Repair) → CORRECTED`
 
 ```powershell
 python demo.py
@@ -290,7 +293,47 @@ Audit Notes: Corrected founding year from 2018 to 2019 based on source novatech-
 ============================================================
 ```
 
-*(To run the failure demo using the live Google Gemini API, set `GEMINI_API_KEY` in `.env` and execute `python demo.py --real`).*
+### 9.2 Real Google Gemini Demo (`python demo.py --real`)
+
+The live Gemini demo does **NOT** intentionally force a failure. It executes the real-world pipeline:
+`Question → Trusted Evidence → Gemini Draft → Independent Checker → Verified / Corrected / Flagged`
+
+Because the real Gemini model may naturally synthesize an accurate, evidence-supported draft from the provided source (`novatech-001`), the Stage 2 Checker independently audits each claim against the evidence. When all claims are corroborated, the result is accepted directly as a `FINAL VERIFIED RESULT` (`VERIFIED`).
+
+```powershell
+python demo.py --real
+```
+
+**Actual Terminal Output:**
+```
+[INFO] Running demo with REAL Google Gemini API...
+
+============================================================
+       EVIDENCEGUARD SELF-CHECK DEMO
+============================================================
+PROVIDER: gemini
+MODEL:    gemini-3.5-flash-lite
+
+QUESTION:
+Who founded NovaTech and what year did they start the company?
+
+TRUSTED EVIDENCE:
+[novatech-001] NovaTech was founded in October 2019 by Dr. Priya Shah and Marcus Vance. The company is headquartered in Seattle, Washington.
+
+FIRST LLM DRAFT:
+"NovaTech was founded by Dr. Priya Shah and Marcus Vance in 2019."
+
+CHECK RESULT:
+PASSED
+
+FINAL VERIFIED RESULT:
+"NovaTech was founded by Dr. Priya Shah and Marcus Vance in 2019."
+
+FINAL STATUS:
+VERIFIED
+Audit Notes: All claims independently verified against trusted evidence.
+============================================================
+```
 
 ---
 
@@ -308,7 +351,7 @@ In keeping with Protofine's emphasis on engineering judgment:
 
 ## 11. Measurement & Scaling Plan
 
-To evaluate EvidenceGuard AI in production as traffic scales, we would track the following quantitative metrics across a labeled gold evaluation set (500 curated Q&A pairs):
+To evaluate EvidenceGuard AI as traffic scales, we propose tracking the following quantitative metrics across a planned future gold evaluation set (e.g., 500 curated Q&A pairs):
 
 ```
                                   Detected Grounding Failures Repaired
@@ -329,10 +372,10 @@ Evidence-Grounding Precision    = --------------------------------
 2. **False Positive Rate (FPR)**: Rate at which valid, supported claims are erroneously flagged, measuring unnecessary latency overhead.
 3. **False Negative Rate (FNR)**: Rate at which ungrounded claims pass undetected through the checker pass.
 4. **Correction Success vs. Flagging Accuracy**: Proportion of salvageable answers successfully repaired vs. ungrounded questions correctly flagged.
-5. **Latency & Cost Profile (Measured Separately)**:
-   - **Deterministic Mock Mode**: Local execution ~2ms per request, $0 cost.
-   - **Real Google Gemini Mode**: Full 3-stage loop measured via live API (typical ~1.5s–2.5s network round-trip, depending on token count).
-6. **Structured Output Failure Rate**: Percentage of LLM passes returning malformed JSON requiring fallback (target: <0.5%).
+5. **Latency & Cost Profile**:
+   - **Deterministic Mock Mode**: In-memory local execution, zero external network calls, $0 cost.
+   - **Real Google Gemini Mode**: Latency is measured per request and depends on the selected model, prompt size, network round-trip, and API response time.
+6. **Structured Output Failure Rate**: Percentage of LLM passes returning malformed JSON requiring fallback (should be measured systematically during evaluation).
 
 ---
 
