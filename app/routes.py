@@ -30,8 +30,19 @@ async def list_evidence():
     return get_all_evidence()
 
 
+from fastapi import APIRouter, HTTPException, Depends, status
+from app.llm import get_llm_provider, LLMProvider
+
+def get_pipeline_provider() -> LLMProvider:
+    """Dependency provider for LLM execution."""
+    return get_llm_provider()
+
+
 @router.post("/answer", response_model=AnswerResponse, summary="Execute Self-Check Factual Answer Loop")
-async def answer_question(request: AnswerRequest):
+async def answer_question(
+    request: AnswerRequest,
+    provider: LLMProvider = Depends(get_pipeline_provider)
+):
     """
     Main endpoint:
     1. Drafts an answer using LLM
@@ -60,7 +71,8 @@ async def answer_question(request: AnswerRequest):
     try:
         response = await run_evidenceguard_pipeline(
             question=clean_q,
-            evidence_ids=request.evidence_ids
+            evidence_ids=request.evidence_ids,
+            provider=provider
         )
         return response
     except TimeoutError as e:

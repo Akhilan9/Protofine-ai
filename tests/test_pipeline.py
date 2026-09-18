@@ -182,13 +182,15 @@ async def test_scenario_6_multi_claim_one_unsupported():
     assert "Ruby" not in response.final.answer
 
 
+from app.config import settings
+
 # =========================================================================
 # OPTIONAL INTEGRATION TEST: Real Google Gemini API
-# Only executes if GEMINI_API_KEY is configured in environment
+# Only executes if GEMINI_API_KEY is configured in environment or .env
 # =========================================================================
 @pytest.mark.asyncio
 @pytest.mark.skipif(
-    not os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY", "").startswith("your_"),
+    not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY.startswith("your_"),
     reason="GEMINI_API_KEY not configured; skipping live Gemini integration test"
 )
 async def test_live_gemini_integration():

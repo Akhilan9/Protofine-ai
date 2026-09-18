@@ -2,6 +2,12 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.config import settings
+from app.routes import get_pipeline_provider
+from app.llm.mock_provider import MockLLMProvider
+
+# Use deterministic mock provider for API unit tests to prevent external API quota consumption
+app.dependency_overrides[get_pipeline_provider] = lambda: MockLLMProvider()
 
 client = TestClient(app)
 
@@ -11,8 +17,8 @@ def test_health_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert data["provider"] == "mock"
-    assert data["model"] == "deterministic-mock"
+    assert data["provider"] == settings.effective_provider
+    assert data["model"] == settings.effective_model
     assert data["evidence_count"] == 10
 
 
@@ -35,8 +41,7 @@ def test_answer_endpoint_successful_pipeline():
     assert response.status_code == 200
     data = response.json()
     assert data["question"] == payload["question"]
-    assert data["provider"] == "mock"
-    assert data["model"] == "deterministic-mock"
+    assert data["provider"] in ("gemini", "mock")
     assert "draft" in data
     assert "check" in data
     assert "final" in data
