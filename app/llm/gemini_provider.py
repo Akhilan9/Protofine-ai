@@ -1,7 +1,16 @@
 """Google Gemini LLM provider implementation using the official google-genai SDK."""
 import asyncio
 import logging
+import warnings
 from typing import Optional
+
+# Suppress upstream aiohttp subclass deprecation warning emitted by google-genai SDK
+warnings.filterwarnings(
+    "ignore",
+    message=r".*Inheritance class AiohttpClientSession from ClientSession is discouraged.*",
+    category=DeprecationWarning,
+)
+
 from google import genai
 from google.genai import types
 from google.genai.errors import APIError
