@@ -43,7 +43,8 @@ class GeminiProvider(LLMProvider):
             try:
                 config = types.GenerateContentConfig(
                     system_instruction=system_prompt,
-                    temperature=0.0
+                    temperature=0.0,
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
                 )
                 if json_mode:
                     config.response_mime_type = "application/json"
