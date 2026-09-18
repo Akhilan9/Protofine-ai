@@ -94,6 +94,7 @@ Produce your corrected or flagged final response in strict JSON."""
     except json.JSONDecodeError:
         logger.error("Corrector output failed JSON decode; falling back to flagged status.")
         return FinalResult(
+            title="FLAGGED FINAL RESULT",
             status="flagged",
             answer="The draft answer could not be safely corrected against available evidence.",
             correction_notes="Corrector output was malformed."
@@ -102,12 +103,15 @@ Produce your corrected or flagged final response in strict JSON."""
     # Safety safeguard: if no evidence supported the claim and answer is empty
     if not answer:
         return FinalResult(
+            title="FLAGGED FINAL RESULT",
             status="flagged",
             answer="The available evidence does not contain sufficient facts to answer the question.",
             correction_notes="No facts were corroborated by trusted evidence."
         )
 
+    title = "CORRECTED FINAL RESULT" if status == "corrected" else "FLAGGED FINAL RESULT"
     return FinalResult(
+        title=title,
         status=status,
         answer=answer,
         correction_notes=notes

@@ -25,6 +25,7 @@ async def test_scenario_1_clean_supported_founding():
     assert response.check.passed is True
     assert response.check.failure_type is None
     assert response.final.status == "verified"
+    assert response.final.title == "FINAL VERIFIED RESULT"
     assert response.final.answer == response.draft.answer
     assert "Priya Shah" in response.final.answer
     assert "2019" in response.final.answer
@@ -51,6 +52,7 @@ async def test_scenario_2_clean_supported_pricing():
     assert response.check.passed is True
     assert response.check.failure_type is None
     assert response.final.status == "verified"
+    assert response.final.title == "FINAL VERIFIED RESULT"
     assert "$499" in response.final.answer
     assert "5 worker nodes" in response.final.answer
 
@@ -91,6 +93,7 @@ async def test_scenario_3_confident_wrong_draft_founding_year():
 
     # 3. Correction stage resolved the error using trusted evidence
     assert response.final.status == "corrected"
+    assert response.final.title == "CORRECTED FINAL RESULT"
     assert "2019" in response.final.answer
     assert "2018" not in response.final.answer
     assert response.final.correction_notes is not None
@@ -120,6 +123,7 @@ async def test_scenario_4_contradicted_windows_support():
 
     # Final answer corrected to reflect truth
     assert response.final.status == "corrected"
+    assert response.final.title == "CORRECTED FINAL RESULT"
     assert "private preview" in response.final.answer.lower()
     assert "not supported in production" in response.final.answer.lower()
 
@@ -147,6 +151,7 @@ async def test_scenario_5_unanswerable_insufficient_evidence():
 
     # Corrector refuses to guess and flags as insufficient evidence
     assert response.final.status == "flagged"
+    assert response.final.title == "FLAGGED FINAL RESULT"
     assert "does not contain" in response.final.answer.lower() or "does not specify" in response.final.answer.lower()
 
 
@@ -176,6 +181,7 @@ async def test_scenario_6_multi_claim_one_unsupported():
 
     # Final answer should preserve supported and excise unsupported
     assert response.final.status == "corrected"
+    assert response.final.title == "CORRECTED FINAL RESULT"
     assert "Rust" in response.final.answer
     assert "Go" in response.final.answer
     assert "PostgreSQL" in response.final.answer

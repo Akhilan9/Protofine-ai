@@ -50,6 +50,7 @@ async def test_intentional_failure_story_reproducibility():
 
     # 3. PROVE: CORRECTION = SUCCESS
     assert response.final.status == "corrected", "Final status must be 'corrected'."
+    assert response.final.title == "CORRECTED FINAL RESULT", "Final title must be 'CORRECTED FINAL RESULT'."
     assert truth_year in response.final.answer, "Final answer must restore the ground truth (2019)."
     assert hallucinated_year not in response.final.answer, "Final answer must eliminate the hallucination (2018)."
     assert "Priya Shah" in response.final.answer, "Final answer must preserve valid supported facts."

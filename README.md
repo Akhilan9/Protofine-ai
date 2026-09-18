@@ -281,7 +281,7 @@ CLAIM-BY-CLAIM SKEPTICAL AUDIT:
     Claim:  "NovaTech is headquartered in Seattle, Washington"
     Reason: Corroborated by source novatech-001.
 
-CORRECTED / VERIFIED ANSWER:
+CORRECTED FINAL RESULT:
 "NovaTech was founded in October 2019 by Dr. Priya Shah and Marcus Vance in Seattle, Washington."
 
 FINAL STATUS:

@@ -76,15 +76,16 @@ async def run_evidenceguard_pipeline(
     # ---------------------------------------------------------
     if check.passed:
         final = FinalResult(
+            title="FINAL VERIFIED RESULT",
             status="verified",
             answer=draft.answer,
             correction_notes="All claims independently verified against trusted evidence."
         )
-        logger.info("[STAGE 3: RESOLUTION] Draft passed verification directly.")
+        logger.info("[STAGE 3: FINAL VERIFIED RESULT] Draft passed verification directly.")
     else:
         logger.info("[STAGE 3: CORRECTION] Check failed. Executing correction pass...")
         final = await run_corrector(question, draft.answer, check, evidence, active_provider)
-        logger.info(f"[STAGE 3: CORRECTION RESULT] Status: {final.status} | Notes: {final.correction_notes}")
+        logger.info(f"[STAGE 3: {final.title}] Status: {final.status} | Notes: {final.correction_notes}")
 
     elapsed = time.perf_counter() - start_time
     logger.info(

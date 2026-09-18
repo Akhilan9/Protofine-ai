@@ -514,9 +514,9 @@
       <div class="pipeline-stage">
         <div class="stage-header">
           <div class="stage-title">
-            <span>Stage 3: Verified / Corrected Final Result</span>
+            <span>Stage 3: </span><span id="stage3Title">FINAL VERIFIED RESULT</span>
           </div>
-          <span class="stage-pill" id="finalStatusPill">Verified</span>
+          <span class="stage-pill verified" id="finalStatusPill">VERIFIED</span>
         </div>
         <div class="stage-body" id="finalAnswerText"></div>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;" id="finalNotesText"></p>
@@ -651,13 +651,21 @@
       }).join('');
 
       // Stage 3
+      const stage3Title = document.getElementById('stage3Title');
       const finalPill = document.getElementById('finalStatusPill');
-      finalPill.textContent = data.final.status.toUpperCase();
-      if (data.final.status === 'verified') {
+      const finalStatus = (data.final && data.final.status ? data.final.status : '').toLowerCase();
+
+      if (finalStatus === 'verified') {
+        stage3Title.textContent = "FINAL VERIFIED RESULT";
+        finalPill.textContent = "VERIFIED";
         finalPill.className = "stage-pill verified";
-      } else if (data.final.status === 'corrected') {
+      } else if (finalStatus === 'corrected') {
+        stage3Title.textContent = "CORRECTED FINAL RESULT";
+        finalPill.textContent = "CORRECTED";
         finalPill.className = "stage-pill corrected";
       } else {
+        stage3Title.textContent = "FLAGGED FINAL RESULT";
+        finalPill.textContent = "FLAGGED";
         finalPill.className = "stage-pill flagged";
       }
 

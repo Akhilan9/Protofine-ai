@@ -54,6 +54,10 @@ class CheckResult(BaseModel):
 
 class FinalResult(BaseModel):
     """The final answer after self-check verification and conditional correction."""
+    title: Optional[str] = Field(
+        default=None,
+        description="Stage 3 title: FINAL VERIFIED RESULT, CORRECTED FINAL RESULT, or FLAGGED FINAL RESULT"
+    )
     status: Literal["verified", "corrected", "flagged"] = Field(
         ...,
         description="verified (passed check), corrected (fixed unsupported facts), or flagged (insufficient evidence)"
@@ -63,6 +67,15 @@ class FinalResult(BaseModel):
         default=None,
         description="Details on what was corrected or why it was flagged"
     )
+
+    def model_post_init(self, __context) -> None:
+        if not self.title:
+            titles = {
+                "verified": "FINAL VERIFIED RESULT",
+                "corrected": "CORRECTED FINAL RESULT",
+                "flagged": "FLAGGED FINAL RESULT"
+            }
+            object.__setattr__(self, "title", titles.get(self.status, "FINAL VERIFIED RESULT"))
 
 
 class AnswerRequest(BaseModel):

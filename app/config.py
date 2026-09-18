@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # Google Gemini Settings
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
     LLM_PROVIDER: str = "mock"  # "gemini" or "mock"
     REQUEST_TIMEOUT_SECONDS: float = 30.0
 

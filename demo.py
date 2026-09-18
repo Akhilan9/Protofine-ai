@@ -77,8 +77,12 @@ async def main():
             print(f"  * {badge:<16} {sources}")
             print(f"    Claim:  \"{claim_text}\"")
             print(f"    Reason: {c.reason}\n")
-
-    print("CORRECTED / VERIFIED ANSWER:")
+    stage3_title = getattr(result.final, "title", None) or (
+        "FINAL VERIFIED RESULT" if result.final.status == "verified"
+        else "CORRECTED FINAL RESULT" if result.final.status == "corrected"
+        else "FLAGGED FINAL RESULT"
+    )
+    print(f"\n{stage3_title}:")
     print(f"\"{result.final.answer}\"")
 
     print("\nFINAL STATUS:")
