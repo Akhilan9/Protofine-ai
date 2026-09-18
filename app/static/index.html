@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EvidenceGuard AI — Self-Checking Factual Answer Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 24, 38, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.25);
+      --accent: #06b6d4;
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.1) 0px, transparent 50%);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.5;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .badge-intern {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      margin-left: 0.5rem;
+    }
+
+    .header-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      transition: all 0.2s;
+    }
+
+    .header-links a:hover {
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .scenarios-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .scenarios-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .chip-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 0.8rem;
+      font-family: inherit;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .chip-btn:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .chip-pill {
+      font-size: 0.7rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .chip-pill.pass { background: var(--success-bg); color: var(--success); }
+    .chip-pill.fail { background: var(--danger-bg); color: var(--danger); }
+    .chip-pill.flag { background: var(--warning-bg); color: var(--warning); }
+
+    .query-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.95rem;
+      padding: 0.75rem 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    button.btn-run {
+      background: linear-gradient(135deg, var(--primary), #4f46e5);
+      border: none;
+      color: #fff;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 0 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    button.btn-run:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    button.btn-run:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .pipeline-stage {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .stage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .stage-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .stage-pill {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stage-pill.verified { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
+    .stage-pill.corrected { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning); }
+    .stage-pill.flagged { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
+    .stage-pill.draft { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); }
+
+    .stage-body {
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .claims-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .claim-item {
+      background: rgba(0, 0, 0, 0.2);
+      border-left: 3px solid #64748b;
+      padding: 0.75rem;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.88rem;
+    }
+
+    .claim-item.supported { border-left-color: var(--success); background: var(--success-bg); }
+    .claim-item.unsupported { border-left-color: var(--warning); background: var(--warning-bg); }
+    .claim-item.contradicted { border-left-color: var(--danger); background: var(--danger-bg); }
+
+    .claim-top {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.25rem;
+    }
+
+    .claim-status {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .claim-sources {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .claim-reason {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .evidence-drawer {
+      margin-top: 2rem;
+      background: rgba(18, 24, 38, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .evidence-drawer summary {
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      outline: none;
+    }
+
+    .evidence-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .evidence-mini {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.8rem;
+    }
+
+    .evidence-id {
+      font-family: var(--font-mono);
+      color: var(--accent);
+      font-size: 0.72rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+        <div>
+          <h1>EvidenceGuard AI <span class="badge-intern">Self-Check Loop</span></h1>
+        </div>
+      </div>
+      <div class="header-links">
+        <a href="/docs" target="_blank">Swagger /docs</a>
+        <a href="/api/v1/evidence" target="_blank">Raw Evidence</a>
+        <a href="/api/v1/health" target="_blank">Health</a>
+      </div>
+    </header>
+
+    <!-- Preset Scenarios -->
+    <div class="scenarios-card">
+      <div class="scenarios-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        Verified Test Scenarios (Click to Run)
+      </div>
+      <div class="preset-chips">
+        <button class="chip-btn" onclick="runPreset(1)">
+          <span class="chip-pill pass">PASS</span>
+          1. Clean Supported (Founding)
+        </button>
+        <button class="chip-btn" onclick="runPreset(2)">
+          <span class="chip-pill pass">PASS</span>
+          2. Clean Supported (Pricing)
+        </button>
+        <button class="chip-btn" onclick="runPreset(3)">
+          <span class="chip-pill fail">FAIL &rarr; FIX</span>
+          3. Plausible Wrong Draft (2018 vs 2019)
+        </button>
+        <button class="chip-btn" onclick="runPreset(4)">
+          <span class="chip-pill fail">FAIL &rarr; FIX</span>
+          4. Contradicted Platform (Windows)
+        </button>
+        <button class="chip-btn" onclick="runPreset(5)">
+          <span class="chip-pill flag">FLAG</span>
+          5. Unanswerable (Revenue/Valuation)
+        </button>
+        <button class="chip-btn" onclick="runPreset(6)">
+          <span class="chip-pill fail">FAIL &rarr; FIX</span>
+          6. Multi-Claim (Fabricated Tech)
+        </button>
+      </div>
+    </div>
+
+    <!-- Query Input -->
+    <div class="query-box">
+      <div class="input-row">
+        <input type="text" id="questionInput" placeholder="Ask a question about NovaTech or NovaSync..." value="Who founded NovaTech and when?" />
+        <button class="btn-run" id="runBtn" onclick="submitQuery()">
+          <span>Run Pipeline</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Results Display -->
+    <div class="pipeline-grid" id="pipelineGrid" style="display: none;">
+      <!-- Stage 1 -->
+      <div class="pipeline-stage">
+        <div class="stage-header">
+          <div class="stage-title">
+            <span>Stage 1: LLM Drafter</span>
+          </div>
+          <span class="stage-pill draft" id="draftModelPill">gpt-4o-mini</span>
+        </div>
+        <div class="stage-body" id="draftAnswerText"></div>
+      </div>
+
+      <!-- Stage 2 -->
+      <div class="pipeline-stage">
+        <div class="stage-header">
+          <div class="stage-title">
+            <span>Stage 2: Adversarial Factual Checker</span>
+          </div>
+          <span class="stage-pill" id="checkVerdictPill">Passed</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;" id="checkSummaryText"></p>
+        <div class="claims-list" id="claimsContainer"></div>
+      </div>
+
+      <!-- Stage 3 -->
+      <div class="pipeline-stage">
+        <div class="stage-header">
+          <div class="stage-title">
+            <span>Stage 3: Verified / Corrected Final Result</span>
+          </div>
+          <span class="stage-pill" id="finalStatusPill">Verified</span>
+        </div>
+        <div class="stage-body" id="finalAnswerText"></div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;" id="finalNotesText"></p>
+      </div>
+    </div>
+
+    <!-- Evidence Base Drawer -->
+    <details class="evidence-drawer">
+      <summary>View Trusted Knowledge Base (10 Deterministic Records)</summary>
+      <div class="evidence-grid" id="evidenceGrid"></div>
+    </details>
+  </div>
+
+  <script>
+    const presets = {
+      1: "Who founded NovaTech and when?",
+      2: "What is the pricing and cluster limit for NovaSync Standard tier?",
+      3: "Who founded NovaTech and what year did they start?",
+      4: "Does NovaSync support production deployment on Windows Server?",
+      5: "What was NovaTech's total annual recurring revenue and valuation in 2024?",
+      6: "What programming languages and databases power NovaSync?"
+    };
+
+    // Load Evidence Base on start
+    async function loadEvidence() {
+      try {
+        const res = await fetch('/api/v1/evidence');
+        const data = await res.json();
+        const grid = document.getElementById('evidenceGrid');
+        grid.innerHTML = data.map(item => `
+          <div class="evidence-mini">
+            <div class="evidence-id">${item.source_id} &bull; ${item.title}</div>
+            <div>${item.content}</div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error("Failed to load evidence", e);
+      }
+    }
+    loadEvidence();
+
+    function runPreset(id) {
+      document.getElementById('questionInput').value = presets[id];
+      submitQuery();
+    }
+
+    async function submitQuery() {
+      const q = document.getElementById('questionInput').value.trim();
+      if (!q) return;
+
+      const btn = document.getElementById('runBtn');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="loading-spinner"></span> Checking...`;
+
+      try {
+        const res = await fetch('/api/v1/answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          alert("Error: " + (err.detail || "Request failed"));
+          return;
+        }
+
+        const data = await res.json();
+        renderResult(data);
+      } catch (err) {
+        alert("Pipeline call failed: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Run Pipeline</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
+      }
+    }
+
+    function renderResult(data) {
+      document.getElementById('pipelineGrid').style.display = 'grid';
+
+      // Stage 1
+      document.getElementById('draftModelPill').textContent = data.draft.model;
+      document.getElementById('draftAnswerText').textContent = data.draft.answer;
+
+      // Stage 2
+      const checkPill = document.getElementById('checkVerdictPill');
+      if (data.check.passed) {
+        checkPill.textContent = "CHECK PASSED";
+        checkPill.className = "stage-pill verified";
+        document.getElementById('checkSummaryText').textContent = "All claims corroborated by trusted evidence.";
+      } else {
+        checkPill.textContent = `CHECK FAILED: ${data.check.failure_type || 'UNSUPPORTED_FACT'}`;
+        checkPill.className = "stage-pill flagged";
+        document.getElementById('checkSummaryText').textContent = "Adversarial auditor detected ungrounded or contradictory claims.";
+      }
+
+      const claimsContainer = document.getElementById('claimsContainer');
+      claimsContainer.innerHTML = data.check.claims.map(c => `
+        <div class="claim-item ${c.status}">
+          <div class="claim-top">
+            <span class="claim-status">${c.status.toUpperCase()}</span>
+            <span class="claim-sources">${c.evidence_ids.length ? c.evidence_ids.join(', ') : 'No Evidence Match'}</span>
+          </div>
+          <div style="font-weight: 500; margin-bottom: 0.2rem;">"${c.claim}"</div>
+          <div class="claim-reason">${c.reason}</div>
+        </div>
+      `).join('');
+
+      // Stage 3
+      const finalPill = document.getElementById('finalStatusPill');
+      finalPill.textContent = data.final.status.toUpperCase();
+      if (data.final.status === 'verified') {
+        finalPill.className = "stage-pill verified";
+      } else if (data.final.status === 'corrected') {
+        finalPill.className = "stage-pill corrected";
+      } else {
+        finalPill.className = "stage-pill flagged";
+      }
+
+      document.getElementById('finalAnswerText').textContent = data.final.answer;
+      document.getElementById('finalNotesText').textContent = data.final.correction_notes ? `Audit Note: ${data.final.correction_notes}` : "";
+    }
+  </script>
+</body>
+</html>
