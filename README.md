@@ -385,7 +385,7 @@ A minimal `Dockerfile` is provided for containerized deployment. The API key mus
 
 ```bash
 # Build the container image
-docker build -t evidenceguard-ai .
+docker build -t evidenceguard-ai
 
 # Run container with Gemini API Key
 docker run -p 8000:8000 -e GEMINI_API_KEY="your_api_key_here" -e LLM_PROVIDER="gemini" evidenceguard-ai
